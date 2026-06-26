@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <meta charset="UTF-8">
+    <title>SOC Panel | Security Report</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <style>
+        :root{
+        --bg:#0e0b0a;
+        --surface:#171312;
+        --border:#2a1f1b;
+        --text:#f5efe6;
+        --text-dim:#c7bfb5;
+        --primary:#d4af37;
+        --red:#b11226;
+        --green:#3fa34d;
+        --orange:#e0a106;
+        }
+
+        *{box-sizing:border-box;}
+
+        body{
+        margin:0;
+        background:var(--bg);
+        color:var(--text);
+        font-family:'Inter',sans-serif;
+        display:flex;
+        height:100vh;
+        overflow:hidden;
+        }
+
+        /* ===== SIDEBAR (IDENTICAL TO DASHBOARD) ===== */
+        .sidebar{
+        width:260px;
+        background:var(--surface);
+        border-right:1px solid var(--border);
+        padding:20px;
+        display:flex;
+        flex-direction:column;
+        }
+        .brand{
+        font-size:18px;
+        font-weight:600;
+        margin-bottom:40px;
+        display:flex;
+        align-items:center;
+        gap:10px;
+        }
+        .logo-box{
+        width:30px;
+        height:30px;
+        background:var(--primary);
+        border-radius:6px;
+        }
+        .nav-item{
+        padding:12px 16px;
+        color:var(--text-dim);
+        cursor:pointer;
+        border-radius:8px;
+        margin-bottom:5px;
+        font-size:14px;
+        display:flex;
+        gap:12px;
+        align-items:center;
+        text-decoration:none;
+        }
+        .nav-item:hover,
+        .nav-item.active{
+        background:#3b82f61a;
+        color:var(--primary);
+        }
+        .card {
+            padding-bottom: 15px !important;
+        }
+
+        .main {
+            padding-bottom: 0 !important;
+        }
+
+
+        /* ===== MAIN ===== */
+        .main{
+        flex:1;
+        padding:30px;
+        overflow-y:auto;
+        }
+
+        /* ===== CARD ===== */
+        .card{
+        background:var(--surface);
+        border:1px solid var(--border);
+        border-radius:12px;
+        padding:20px;
+        margin-bottom:20px;
+        }
+
+        /* ===== SMALL DASHBOARD STYLE TITLE ===== */
+        .card-title{
+        font-size:11px;
+        text-transform:uppercase;
+        color:var(--text-dim);
+        font-weight:600;
+        letter-spacing:0.5px;
+        margin-bottom:15px;
+        }
+
+        /* ===== GRID ===== */
+        .grid{
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        gap:20px;
+        }
+
+        /* ===== TABLE ===== */
+        table{
+        width:100%;
+        border-collapse:collapse;
+        font-size:13px;
+        }
+        th{
+        text-align:left;
+        padding:12px 10px;
+        border-bottom:1px solid var(--border);
+        color:var(--text-dim);
+        font-weight:500;
+        font-size:11px;
+        text-transform:uppercase;
+        }
+        td{
+        padding:10px;
+        border-bottom:1px solid #1e293b80;
+        font-family:Consolas, monospace;
+        }
+
+        /* ===== BADGES ===== */
+        .badge{
+        padding:4px 8px;
+        border-radius:4px;
+        font-size:11px;
+        font-weight:600;
+        }
+        .safe{background:#052e16;color:var(--green);}
+        .warn{background:#3f2e0a;color:var(--orange);}
+        .critical{background:#3f0a0a;color:var(--red);}
+
+        /* ===== MAP ===== */
+        #geoMap{
+        height:280px;
+        border-radius:10px;
+        }
+
+        /* ===== BUTTON ===== */
+        .btn-download{
+        background:var(--primary);
+        color:black;
+        padding:10px 20px;
+        border:none;
+        border-radius:6px;
+        font-weight:600;
+        cursor:pointer;
+        }
+
+        /* PRINT MODE */
+        @media print {
+            .card {
+                padding-bottom: 15px !important;
+            }
+
+            .main {
+                padding-bottom: 0 !important;
+            }
+
+            body {
+                background: white !important;
+                color: black !important;
+                display: block !important;
+                height: auto !important;
+                overflow: visible !important;
+                font-family: Arial, sans-serif !important;
+            }
+            .leaflet-control-container {
+                display: none !important;
+            }
+
+            .sidebar,
+            .btn-download {
+                display: none !important;
+            }
+
+            .main {
+                padding: 0 20px !important;
+                width: 100% !important;
+            }
+
+            .report-header {
+                text-align: center;
+                border-bottom: 2px solid #000;
+                padding-bottom: 10px;
+                margin-bottom: 25px;
+            }
+
+            .report-header h1 {
+                font-size: 28px !important;
+                font-weight: bold !important;
+            }
+
+            .grid {
+                display: block !important;
+            }
+
+            .card {
+                border: 1px solid #ccc !important;
+                margin-bottom: 25px !important;
+                padding: 15px !important;
+                background: white !important;
+                page-break-inside: avoid;
+            }
+
+            canvas {
+                display: block !important;
+                margin: 0 auto !important;
+                width: 70% !important;
+                height: auto !important;
+            }
+
+            #geoMap {
+                height: 400px !important;
+                width: 100% !important;
+                border: 1px solid #ccc !important;
+            }
+
+            .card:has(#geoMap) {
+                height: auto !important;
+            }
+
+            table {
+                width: 100% !important;
+                border-collapse: collapse !important;
+                font-size: 10px !important;
+            }
+
+            th, td {
+                border: 1px solid #999 !important;
+                padding: 5px !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="sidebar">
+    <div class="brand">
+        <div class="logo-box"></div>
+        Netpulse
+    </div>
+    <a href="welcome.html" class="nav-item">🏠 Home</a>
+    <a href="index.html" class="nav-item" onclick="setActive(this); showDashboard()">📊 Dashboard</a>
+    <a href="index.html?view=packet" class="nav-item">📦 Packet Analysis</a>
+    <a href="globalmap.html" class="nav-item" onclick="setActive(this)">🌍 Global Map</a>
+    <a href="report.html" class="nav-item">📄 Report</a>
+    <a href="login.html" onclick="logout()" class="nav-item" style="color: var(--red);">🚪 Logout</a>
+</div>
+
+<div class="main">
+    <div class="report-header">
+        <h1>Network Security Analysis Report</h1>
+        <p class="report-sub">
+            Generated on: <span id="reportDate"></span>
+        </p>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+        <button class="btn-download"onclick="preparePrint()">⬇ Download Report</button>
+    </div>
+
+    <!-- MAP -->
+    <div class="card">
+        <div class="card-title">Geo Origin Satellite Map</div>
+        <div id="geoMap"></div>
+    </div>
+
+    <!-- CHARTS -->
+    <div class="grid">
+
+        <div class="card">
+            <div class="card-title">Protocol Distribution</div>
+            <div style="height:220px;">
+                <canvas id="pieChart"></canvas>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">Protocol Traffic</div>
+            <div style="height:220px;">
+                <canvas id="barChart"></canvas>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- SUMMARY -->
+    <div class="card">
+        <div class="card-title">Packet Summary</div>
+        <p>Total Packets: <strong id="totalPackets">0</strong></p>
+        <p>TCP: <strong id="tcpCount">0</strong></p>
+        <p>UDP: <strong id="udpCount">0</strong></p>
+        <p>Other: <strong id="otherCount">0</strong></p>
+    </div>
+
+    <!-- TABLE -->
+    <div class="card">
+        <div class="card-title">Packet Log (Last 200)</div>
+        <table>
+            <thead>
+            <tr>
+                <th>Time</th>
+                <th>Source</th>
+                <th>Destination</th>
+                <th>Protocol</th>
+                <th>Size</th>
+                <th>Status</th>
+            </tr>
+            </thead>
+            <tbody id="packetTable"></tbody>
+        </table>
+    </div>
+
+</div>
+
+<script>
+    document.getElementById("reportDate").innerText =
+        new Date().toLocaleString();
+    const API_PACKET="http://localhost:8080/api/packet";
+    let packets=[];
+    let pieChart,barChart,map,markers;
+
+    document.addEventListener("DOMContentLoaded",()=>{
+        initCharts();
+        initMap();
+
+        // Initial fetch
+        fetchPackets();
+
+        // 🔥 Live sync every 1 second
+        setInterval(fetchPackets,700);
+    });
+    function preparePrint(){
+
+        // Force chart re-render before printing
+        pieChart.resize();
+        barChart.resize();
+
+        setTimeout(()=>{
+            window.print();
+        }, 500);
+    }
+    function preparePrint(){
+
+        // Force full world bounds
+        map.fitBounds([
+            [-60, -180],
+            [85, 180]
+        ]);
+
+        setTimeout(() => {
+
+            map.invalidateSize();
+
+            setTimeout(() => {
+                window.print();
+            }, 800);
+
+        }, 500);
+    }
+    Chart.register(ChartDataLabels);
+    /* CHARTS */
+    function initCharts(){
+
+        pieChart = new Chart(document.getElementById("pieChart"), {
+            type: 'doughnut',
+            data: {
+                labels: ['TCP','UDP','OTHER'],
+                datasets: [{
+                    data: [0,0,0],
+                    backgroundColor: ['#3b82f6','#22c55e','#f59e0b']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: "bottom"
+                    },
+                    datalabels: {
+                        display: false   // disable inside labels
+                    }
+                }
+            }
+        });
+
+        barChart = new Chart(document.getElementById("barChart"), {
+            type: 'bar',
+            data: {
+                labels: ['TCP','UDP','OTHER'],
+                datasets: [{
+                    data: [0,0,0],
+                    backgroundColor: ['#3b82f6','#22c55e','#f59e0b'],
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    datalabels: {
+                        anchor: 'end',
+                        align: 'top',
+                        color: '#000000',   // BLACK as requested
+                        font: {
+                            weight: 'bold',
+                            size: 14
+                        },
+                        formatter: (value) => value
+                    }
+                }
+            },
+            plugins: [ChartDataLabels]
+        });
+    }
+
+    /* MAP */
+    function initMap(){
+    map=L.map("geoMap").setView([20,0],2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{opacity:0.6}).addTo(map);
+    markers=L.layerGroup().addTo(map);
+        map.setMaxBounds([
+            [-90, -180],
+            [90, 180]
+        ]);
+    }
+
+    /* FETCH */
+    async function fetchPackets(){
+        try{
+            const res = await fetch(API_PACKET);
+            const data = await res.json();
+
+            packets = data;
+
+            const stats = calculateStats(data);
+
+            // COUNTERS
+            document.getElementById("totalPackets").innerText = stats.total;
+            document.getElementById("tcpCount").innerText = stats.tcp;
+            document.getElementById("udpCount").innerText = stats.udp;
+            document.getElementById("otherCount").innerText = stats.other;
+
+            // CHARTS
+            pieChart.data.datasets[0].data = [stats.tcp, stats.udp, stats.other];
+            pieChart.update();
+
+            barChart.data.datasets[0].data = [stats.tcp, stats.udp, stats.other];
+            barChart.update();
+
+            // TABLE + MAP
+            renderTable();
+            renderMap();
+
+        }catch(e){
+            console.error("Backend not running");
+        }
+    }
+    function calculateStats(data){
+
+        let tcp = 0, udp = 0, other = 0;
+
+        data.forEach(pkt=>{
+            const protocol = pkt.protocol || "OTHER";
+
+            if(protocol === "TCP") tcp++;
+            else if(protocol === "UDP") udp++;
+            else other++;
+        });
+
+        return {
+            total: data.length,
+            tcp: tcp,
+            udp: udp,
+            other: other
+        };
+    }
+    function renderAll(){
+        const stats = calculateStats(packets);
+
+        updateCounters(stats);
+        updateCharts(stats);
+        renderTable();
+        renderMap();
+    }
+    function updateCharts(stats){
+
+        pieChart.data.datasets[0].data = [
+            stats.tcp,
+            stats.udp,
+            stats.other
+        ];
+        pieChart.update();
+
+        barChart.data.datasets[0].data = [
+            stats.tcp,
+            stats.udp,
+            stats.other
+        ];
+        barChart.update();
+    }
+    function updateCounters(stats){
+        document.getElementById("totalPackets").innerText = stats.total;
+        document.getElementById("tcpCount").innerText = stats.tcp;
+        document.getElementById("udpCount").innerText = stats.udp;
+        document.getElementById("otherCount").innerText = stats.other;
+    }
+    /* UPDATE */
+    function updateReport(){
+
+    let tcp=0,udp=0,other=0;
+
+    packets.forEach(p=>{
+    if(p.protocol==="TCP") tcp++;
+    else if(p.protocol==="UDP") udp++;
+    else other++;
+    });
+
+    document.getElementById("totalPackets").innerText=packets.length;
+    document.getElementById("tcpCount").innerText=tcp;
+    document.getElementById("udpCount").innerText=udp;
+    document.getElementById("otherCount").innerText=other;
+
+    pieChart.data.datasets[0].data=[tcp,udp,other];
+    pieChart.update();
+
+    barChart.data.datasets[0].data=[tcp,udp,other];
+    barChart.update();
+
+    renderTable();
+    renderMap();
+    }
+
+    /* SIZE CLASSIFICATION */
+    function classify(size){
+        size = Number(size);
+        if(size < 64) return "safe";
+        if(size < 1500) return "warn";
+        return "critical";
+    }
+    /* TABLE */
+    function renderTable(){
+    const tbody=document.getElementById("packetTable");
+    tbody.innerHTML="";
+    packets.slice(-200).reverse().forEach(p=>{
+    const status=classify(p.size||0);
+    tbody.innerHTML+=`
+    <tr>
+    <td>${p.time}</td>
+    <td>${p.src}</td>
+    <td>${p.dst}</td>
+    <td>${p.protocol}</td>
+    <td>${p.size} B</td>
+    <td><span class="badge ${status}">${status.toUpperCase()}</span></td>
+    </tr>`;
+    });
+    }
+
+    /* MAP */
+    function renderMap(){
+
+        markers.clearLayers();  // 🔥 clear previous markers
+
+        packets.forEach(p=>{
+            if(p.lat && p.lon){
+                L.circleMarker(
+                    [Number(p.lat), Number(p.lon)],
+                    {
+                        radius:4,
+                        color:"#d4af37"
+                    }
+                ).addTo(markers);
+            }
+        });
+    }
+</script>
+
+</body>
+</html>

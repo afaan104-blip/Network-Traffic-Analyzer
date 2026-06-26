@@ -1,0 +1,1162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SOC Panel | Network Analyzer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            /* BASE */
+            --bg: #0e0b0a;                 /* Deep charcoal / near black */
+            --surface: #171312;            /* Dark panel surface */
+            --border: #2a1f1b;             /* Subtle border */
+
+            /* TEXT */
+            --text: #f5efe6;               /* Soft off-white */
+            --text-dim: #c7bfb5;           /* Muted text */
+
+            /* ACCENTS */
+            --primary: #d4af37;            /* Luxury gold */
+            --red: #b11226;                /* Alert crimson */
+            --green: #3fa34d;              /* Controlled green */
+            --orange: #e0a106;             /* Warning amber */
+
+            /* EFFECTS */
+            --glow-gold: 0 0 12px rgba(212,175,55,0.35);
+            --glow-red: 0 0 14px rgba(177,18,38,0.45);
+        }
+        .nav-item:hover,
+        .nav-item.active {
+            background: linear-gradient(
+                    90deg,
+                    rgba(212,175,55,0.15),
+                    rgba(177,18,38,0.15)
+            );
+            color: var(--primary);
+            box-shadow: inset 3px 0 0 var(--primary);
+        }
+        /* FULL-SCREEN PROTOCOL DRILLDOWN */
+        #protocolView{
+            position: relative;
+            height: calc(100vh - 120px); /* adjust if header height changes */
+            display: none;
+            flex-direction: column;
+        }
+        #protocolView > div:first-child{
+            position: sticky;
+            top: 0;
+            background: var(--surface);
+            z-index: 5;
+            border-bottom: 1px solid var(--border);
+        }
+        .brand {
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: 0.6px;
+        }
+
+        .logo-box {
+            background: linear-gradient(135deg, #d4af37, #b11226);
+            box-shadow: var(--glow-gold);
+        }
+        .card {
+            background: linear-gradient(
+                    180deg,
+                    #1b1513,
+                    #120e0d
+            );
+            border: 1px solid var(--border);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 14px 40px rgba(212,175,55,0.25);
+        }
+
+        tbody tr {
+            transition: background 0.2s ease;
+        }
+
+        tbody tr:hover {
+            background: rgba(212,175,55,0.08);
+        }
+        @keyframes livePulse {
+            0% {
+                opacity: 0.4;
+                box-shadow: 0 0 4px rgba(47,158,68,0.4);
+                transform: scale(0.95);
+            }
+            50% {
+                opacity: 1;
+                box-shadow: 0 0 14px rgba(47,158,68,0.9);
+                transform: scale(1.15);
+            }
+            100% {
+                opacity: 0.4;
+                box-shadow: 0 0 4px rgba(47,158,68,0.4);
+                transform: scale(0.95);
+            }
+        }
+
+        .live-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--green);
+            display: inline-block;
+            animation: livePulse 1.4s infinite ease-in-out;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* --- SIDEBAR --- */
+        .sidebar {
+            width: 260px;
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+        .brand {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 40px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .logo-box { width: 30px; height: 30px; background: var(--primary); border-radius: 6px; }
+        .nav-item {
+            padding: 12px 16px;
+            color: var(--text-dim);
+            cursor: pointer;
+            border-radius: 8px;
+            margin-bottom: 5px;
+            font-size: 14px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            text-decoration: none;
+        }
+        .nav-item:hover, .nav-item.active { background: #3b82f61a; color: var(--primary); }
+
+        /* --- MAIN CONTENT --- */
+        .main {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+        }
+        #protocolView {
+            height: calc(100vh - 120px);
+            display: none;
+            flex-direction: column;
+        }
+
+        #protocolView .table-scroll {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            align-items: center;
+        }
+
+        /* Status Badges */
+        .status-badge { font-weight: 600; padding: 6px 14px; border-radius: 20px; font-size: 13px; }
+        .status-safe { background: #052e16; color: var(--green); }
+        .status-danger { background: #3f0a0a; color: var(--red); }
+
+        .btn-start {
+            background: var(--green);
+            color: #000;
+            padding: 10px 24px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-stop { background: var(--red); color: white; }
+
+        /* --- STATS GRID --- */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+        }
+        .card-title { font-size: 11px; text-transform: uppercase; color: var(--text-dim); font-weight: 600; letter-spacing: 0.5px; }
+        .card-value { font-size: 28px; font-weight: 600; margin-top: 10px; }
+        .txt-blue { color: var(--primary); }
+        .txt-green { color: var(--green); }
+        .txt-orange { color: var(--orange); }
+
+        /* --- MAIN GRID (Graph + Alerts) --- */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .chart-box {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            height: 360px;
+        }
+        canvas { width: 100%; height: 100%; }
+
+        /* --- ALERT PANEL --- */
+        .alert-panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            height: 360px;
+            display: flex;
+            flex-direction: column;
+        }
+        .alert-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .alert-title { font-weight: 600; color: var(--red); }
+
+        .alerts-box {
+            flex: 1;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+        /* Custom Scrollbar */
+        .alerts-box::-webkit-scrollbar { width: 6px; }
+        .alerts-box::-webkit-scrollbar-track { background: var(--bg); }
+        .alerts-box::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+
+        .alert-item{
+    padding:10px;
+    margin-bottom:8px;
+    border-radius:6px;
+    font-size:12px;
+    animation: fadeIn 0.3s ease;
+    cursor:pointer;
+    transition:all 0.2s ease;
+}
+
+.alert-item:hover{
+    transform:scale(1.02);
+    box-shadow:0 0 15px rgba(177,18,38,0.5);
+}
+
+.alert-critical{
+    background:rgba(177,18,38,0.25);
+    border-left:4px solid #ff0000;
+    color:#ffb4b4;
+}
+
+.alert-warning{
+    background:rgba(224,161,6,0.2);
+    border-left:4px solid #e0a106;
+    color:#ffe08a;
+}
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- TABLE --- */
+        .table-box {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th { text-align: left; padding: 15px 20px; border-bottom: 1px solid var(--border); color: var(--text-dim); font-weight: 500; font-size: 11px; text-transform: uppercase; }
+        td { padding: 12px 20px; border-bottom: 1px solid #1e293b80; color: var(--text); font-family: 'Consolas', monospace; }
+
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; font-family: 'Inter', sans-serif;}
+        .badge-tcp { background: #3b82f620; color: var(--primary); }
+        .badge-udp { background: #22c55e20; color: var(--green); }
+        .badge-other { background: #f59e0b20; color: var(--orange); }
+        /* ADDED: live packet scroll */
+        .table-scroll{
+            flex: 1;
+            overflow-y: auto;
+        }
+        .table-scroll::-webkit-scrollbar{width:6px;}
+        .table-scroll::-webkit-scrollbar-thumb{
+            background:#334155;
+            border-radius:10px;
+        }
+        .btn-close-modern{
+            background:#ef4444;
+            color:white;
+            border:none;
+            padding:8px 14px;
+            border-radius:8px;
+            font-size:13px;
+            font-weight:600;
+            cursor:pointer;
+            transition:all 0.25s ease;
+            display:flex;
+            align-items:center;
+            gap:6px;
+        }
+
+        .btn-close-modern:hover{
+            background:#dc2626;
+            transform:translateY(-1px);
+            box-shadow:0 4px 12px rgba(239,68,68,0.35);
+        }
+
+        .btn-close-modern:active{
+            transform:scale(0.97);
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="sidebar">
+    <div class="brand">
+        <div class="logo-box"></div>
+        Netpulse
+    </div>
+    <a href="welcome.html" class="nav-item">🏠 Home</a>
+    <a href="#" class="nav-item" onclick="setActive(this); showDashboard()">📊 Dashboard</a>
+    <div class="nav-item" onclick="setActive(this); showPacketAnalysis()">📦 Packet Analysis</div>
+    <a href="globalmap.html" class="nav-item" onclick="setActive(this)">🌍 Global Map</a>
+    <a href="report.html" class="nav-item">📄 Report</a>
+    <a href="login.html" onclick="logout()" class="nav-item" style="color: var(--red);">🚪 Logout</a>
+</div>
+
+<div class="main">
+    <div id="dashboardView">
+        <div class="header">
+            <div>
+                <h2 style="margin:0;">Network Traffic Analyzer</h2>
+                <div style="margin-top: 5px; display:flex; align-items:center; gap: 12px;">
+    <span style="color:var(--text-dim); font-size:13px;">
+        Live Monitoring
+    </span>
+
+                    <span class="live-indicator" title="Capture running">
+        ●
+    </span>
+
+                    <span id="sysStatus" class="status-badge status-safe">
+        SAFE
+    </span>
+                </div>
+            </div>
+            <div>
+                <button id="btnStart" class="btn-start" onclick="startCapture()">▶ Start</button>
+                <button id="btnStop" class="btn-start btn-stop" onclick="stopCapture()" style="display:none;">⛔ Stop</button>
+                <button class="btn-start" style="background:#e0a106; color:black;" onclick="resetCapture()">🔄 Reset</button>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="card">
+                <div class="card-title">Total Packets</div>
+                <div class="card-value txt-blue" id="totalPackets">0</div>
+            </div>
+            <div class="card" onclick="openProtocolTab('TCP')">
+                <div class="card-title">TCP Traffic</div>
+                <div class="card-value txt-blue" id="tcpCount">0</div>
+            </div>
+            <div class="card" onclick="openProtocolTab('UDP')">
+                <div class="card-title">UDP Traffic</div>
+                <div class="card-value txt-green" id="udpCount">0</div>
+            </div>
+            <div class="card" onclick="openProtocolTab('OTHER')">
+                <div class="card-title">Other / ICMP</div>
+                <div class="card-value txt-orange" id="otherCount">0</div>
+            </div>
+        </div>
+
+        <div class="main-grid">
+            <div class="chart-box">
+                <div class="card-title" style="margin-bottom:15px;">Traffic Frequency (Pkts/sec)</div>
+                <div style="height: 300px; position: relative;">
+                    <canvas id="trafficGraph"></canvas>
+                </div>
+            </div>
+            <div class="alert-panel">
+                <div class="alert-header">
+                    <span class="alert-title">🚨 Live Threat Feed</span>
+                    <span style="font-size:11px; color:var(--text-dim);">Real-time</span>
+                </div>
+                <div id="alerts" class="alerts-box">
+                    <div style="text-align:center; padding:20px; color:var(--text-dim); font-size:12px;">
+                        Waiting for traffic...
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- ✅ CLOSE dashboardView -->
+    <!-- PACKET ANALYSIS VIEW -->
+    <div id="packetAnalysisView" style="display:none;">
+
+        <h2 style="margin-bottom:20px;">📦 Packet Analysis</h2>
+
+        <!-- TAB BAR -->
+        <div style="display:flex; gap:10px; margin-bottom:15px;">
+            <button class="btn-start" onclick="openAnalysisTab('TCP')">TCP</button>
+            <button class="btn-start" onclick="openAnalysisTab('UDP')">UDP</button>
+            <button class="btn-start" onclick="openAnalysisTab('ICMP')">ICMP</button>
+            <button class="btn-start" onclick="openAnalysisTab('ARP / L2')">ARP</button>
+            <button class="btn-start" onclick="openAnalysisTab('OTHER')">Other</button>
+        </div>
+
+        <!-- TABLE -->
+        <div class="table-box">
+            <div style="padding:15px 20px; border-bottom:1px solid var(--border);">
+                <strong id="analysisTitle">Select a protocol</strong>
+            </div>
+
+            <div class="table-scroll">
+                <table>
+                    <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Source</th>
+                        <th>Destination</th>
+                        <th>Protocol</th>
+                        <th>Size</th>
+                    </tr>
+                    </thead>
+                    <tbody id="analysisTable"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+<!-- PROTOCOL DRILLDOWN VIEW -->
+<div id="protocolView" class="table-box"
+     style="margin-top:20px; display:none; flex-direction:column;">
+
+    <div style="padding:15px;display:flex;justify-content:space-between;">
+        <span id="protoTitle"></span>
+        <button class="btn-close-modern" onclick="closeProtocolTab()">✕</button>
+    </div>
+
+    <div class="table-scroll">
+        <table>
+            <thead>
+            <tr>
+                <th>Time</th>
+                <th>Source</th>
+                <th>Destination</th>
+                <th>Packet Type</th>
+                <th>Size</th>
+            </tr>
+            </thead>
+            <tbody id="protocolTable"></tbody>
+        </table>
+    </div>
+
+</div>
+<!-- ✅ CLOSE main -->
+
+<audio id="alertSound">
+    <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg">
+</audio>
+
+<script>
+    let displayTotal = 0;
+    let displayTCP   = 0;
+    let displayUDP   = 0;
+    let displayOther = 0;
+    let lastAlertCount = 0;
+    function smoothUpdate(el, current, target, speed = 0.2){
+        const next = current + (target - current) * speed;
+        el.innerText = Math.round(next);
+        return next;
+    }
+    let activeProtocol = null;
+
+    let pollingActive = false;
+
+    function startPolling(){
+        if(pollingActive) return;
+
+        pollingActive = true;
+        packetInterval = setInterval(fetchPackets, 700);
+        alertInterval  = setInterval(fetchAlerts, 1500);
+    }
+
+    function stopPolling(){
+        pollingActive = false;
+        clearInterval(packetInterval);
+        clearInterval(alertInterval);
+    }
+    const API_PACKET = "http://localhost:8080/api/packet";
+    const API_START  = "http://localhost:8080/api/start";
+    const API_STOP   = "http://localhost:8080/api/stop";
+    const API_ALERTS = "http://localhost:8080/api/alerts";
+    const API_RESET = "http://localhost:8080/api/reset";
+    let isCapturing=false;
+    let packetInterval=null;
+    let alertInterval=null;
+    let lastPacketCount=0;
+    let lastTime = Date.now();
+    let latestPackets=[];
+    // =====================
+    // MAIN TRAFFIC GRAPH
+    // =====================
+    const ctx=document.getElementById("trafficGraph").getContext("2d");
+
+    const trafficChart=new Chart(ctx,{
+        type:'line',
+        data:{
+            labels:[],
+            datasets:[{
+                label:'Packets/sec',
+                data:[],
+                borderColor:'#3b82f6',
+                backgroundColor:'rgba(59,130,246,0.1)',
+                fill:true,
+                tension:0.4,
+                pointRadius:0
+            }]
+        },
+        options:{
+            responsive:true,
+            maintainAspectRatio:false,
+            plugins:{legend:{display:false}},
+            scales:{x:{display:false},y:{beginAtZero:true}}
+        }
+    });
+
+    // =====================
+    // PIE CHART
+    // =====================
+    const pieCard=document.createElement("div");
+    pieCard.className="card";
+    pieCard.style.display="flex";
+    pieCard.style.flexDirection="column";
+    pieCard.style.alignItems="center";
+    pieCard.style.justifyContent="center";
+    pieCard.style.height="220px";
+
+    const title=document.createElement("div");
+    title.className="card-title";
+    title.innerText="Protocol Distribution";
+    title.style.marginBottom="10px";
+    pieCard.appendChild(title);
+
+    const pieCanvas=document.createElement("canvas");
+    pieCanvas.style.width="160px";
+    pieCanvas.style.height="160px";
+    pieCard.appendChild(pieCanvas);
+
+    document.querySelector(".stats-grid").appendChild(pieCard);
+
+    const protocolChart=new Chart(pieCanvas,{
+        type:'doughnut',
+        data:{
+            labels:['TCP','UDP','OTHER'],
+            datasets:[{
+                data:[0,0,0],
+                backgroundColor:['#3b82f6','#22c55e','#f59e0b']
+            }]
+        },
+        options:{
+            responsive:true,
+            maintainAspectRatio:false,
+            plugins:{
+                legend:{
+                    position:"bottom",
+                    labels:{color:"#fff"}
+                }
+            }
+        }
+    });
+    function openAnalysisTab(type){
+        document.getElementById("analysisTitle").innerText = type + " Packets";
+        const tbody = document.getElementById("analysisTable");
+        tbody.innerHTML = "";
+
+        latestPackets
+            .filter(pkt => {
+                const proto = pkt.protocol || "OTHER";
+                if (proto === type) return true;
+                if (proto === "OTHER" && getOtherType(pkt) === type) return true;
+                return false;
+            })
+            .slice(-300)
+            .reverse()
+            .forEach(pkt => {
+                tbody.innerHTML += `
+                <tr>
+                    <td>${pkt.time}</td>
+                    <td>${pkt.src || "-"}</td>
+                    <td>${pkt.dst || "-"}</td>
+                    <td>${type}</td>
+                    <td>${pkt.size || 0} B</td>
+                </tr>
+            `;
+            });
+    }
+
+    // =====================
+    // BAR CHART
+    // =====================
+    const barCard=document.createElement("div");
+    barCard.className="card";
+    barCard.style.height="220px";
+    barCard.style.gridColumn = "span 3";
+
+    const barTitle=document.createElement("div");
+    barTitle.className="card-title";
+    barTitle.innerText="Protocol Traffic Bar";
+    barTitle.style.marginBottom="10px";
+    barCard.appendChild(barTitle);
+
+    const barCanvas=document.createElement("canvas");
+    barCanvas.style.height="160px";
+    barCard.appendChild(barCanvas);
+
+    document.querySelector(".stats-grid").appendChild(barCard);
+
+    const protocolBarChart=new Chart(barCanvas,{
+        type:'bar',
+        data:{
+            labels:['TCP','UDP','OTHER'],
+            datasets:[{
+                data:[0,0,0],
+                backgroundColor:['#3b82f6','#22c55e','#f59e0b'],
+                borderRadius:6
+            }]
+        },
+        options:{
+            responsive:true,
+            maintainAspectRatio:false,
+            plugins:{legend:{display:false}}
+        }
+    });
+
+    // =====================
+    // START / STOP
+    // =====================
+    async function startCapture(){
+
+    if(isCapturing) return;
+
+    try{
+        await fetch(API_START);
+    }catch(e){
+        console.error("Start failed", e);
+        return;
+    }
+
+    isCapturing = true;
+    startPolling();
+
+    document.getElementById("btnStart").style.display="none";
+    document.getElementById("btnStop").style.display="inline-block";
+
+    sessionStorage.setItem("captureActive", "1");
+}
+
+    async function stopCapture(){
+
+    if(!isCapturing) return;
+
+    try{
+        await fetch(API_STOP);
+    }catch(e){
+        console.error("Stop failed", e);
+    }
+
+    isCapturing = false;
+    stopPolling();
+
+    document.getElementById("btnStart").style.display="inline-block";
+    document.getElementById("btnStop").style.display="none";
+
+    sessionStorage.setItem("captureActive", "0");
+}
+
+    // =====================
+    // FETCH PACKETS (FIXED)
+    // =====================
+    async function fetchPackets(){
+        if(!isCapturing) return;
+        // =====================
+// SAVE FRONTEND STATE
+// =====================
+sessionStorage.setItem("latestPackets", JSON.stringify(latestPackets));
+sessionStorage.setItem("lastPacketCount", lastPacketCount);
+sessionStorage.setItem("trafficData", JSON.stringify(trafficChart.data));
+sessionStorage.setItem("protocolPie", JSON.stringify(protocolChart.data.datasets[0].data));
+sessionStorage.setItem("protocolBar", JSON.stringify(protocolBarChart.data.datasets[0].data));
+        try{
+            const res = await fetch(API_PACKET);
+            const data = await res.json();
+
+            latestPackets = data;
+
+            let tcp = 0, udp = 0, other = 0;
+
+            data.forEach(pkt=>{
+    const protocol = pkt.protocol || "OTHER";
+    if(protocol === "TCP") tcp++;
+    else if(protocol === "UDP") udp++;
+    else other++;
+
+});
+
+            // ✅ DIRECT REAL VALUES (NO ANIMATION)
+document.getElementById("totalPackets").innerText = data.length;
+document.getElementById("tcpCount").innerText = tcp;
+document.getElementById("udpCount").innerText = udp;
+document.getElementById("otherCount").innerText = other;
+
+            // 📈 Traffic rate graph (REAL CALCULATION)
+
+const now = Date.now();
+const timeDiff = (now - lastTime) / 1000;  // seconds
+
+let newPackets = 0;
+
+// If backend restarted
+if (data.length >= lastPacketCount) {
+    newPackets = data.length - lastPacketCount;
+} else {
+    newPackets = data.length;
+}
+
+// Packets per second
+const rate = timeDiff > 0 ? (newPackets / timeDiff) : 0;
+
+lastPacketCount = data.length;
+lastTime = now;
+
+// limit graph points
+if(trafficChart.data.labels.length > 20){
+    trafficChart.data.labels.shift();
+    trafficChart.data.datasets[0].data.shift();
+}
+
+trafficChart.data.labels.push(new Date().toLocaleTimeString());
+trafficChart.data.datasets[0].data.push(rate);
+trafficChart.update();
+
+            // 📊 Charts
+            protocolChart.data.datasets[0].data = [tcp, udp, other];
+            protocolChart.update();
+
+            protocolBarChart.data.datasets[0].data = [tcp, udp, other];
+            protocolBarChart.update();
+
+            // 🔁 Live analysis refresh
+            if(activeProtocol){
+                openAnalysisTab(activeProtocol);
+            }
+
+        }catch(e){
+            console.error("Packet fetch failed:", e);
+        }
+    }
+    function getOtherType(pkt){
+
+        const src = pkt.src || "";
+        const dst = pkt.dst || "";
+        const proto = (pkt.protocol || "").toUpperCase();
+
+        // ===== LAYER 2 =====
+        if (!src || src === "-") {
+            return "ARP / L2";
+        }
+
+        // ===== ICMP =====
+        if (proto === "ICMP") {
+            return "ICMP";
+        }
+
+        // ===== IGMP =====
+        if (dst.startsWith("224.")) {
+            return "IGMP";
+        }
+
+        // ===== MULTICAST =====
+        if (dst.startsWith("239.")) {
+            return "Multicast";
+        }
+
+        // ===== BROADCAST =====
+        if (dst === "255.255.255.255") {
+            return "Broadcast";
+        }
+
+        // ===== IPV6 =====
+        if (dst.includes(":") || src.includes(":")) {
+            return "IPv6";
+        }
+
+        // ===== LINK DISCOVERY =====
+        if (proto === "LLDP") {
+            return "LLDP";
+        }
+
+        // ===== FALLBACK =====
+        return "Unknown / Other";
+    }
+    function classifyPacketSize(size){
+
+    if(!size || size <= 0) return "UNKNOWN";
+
+    // Very small packets (handshakes, ACKs)
+    if(size < 64) return "SMALL_CONTROL";
+
+    // Normal Ethernet MTU traffic
+    if(size <= 1500) return "NORMAL";
+
+    // Jumbo frames (common in enterprise LAN)
+    if(size <= 9000) return "JUMBO";
+
+    // Above jumbo = abnormal
+    if(size <= 12000) return "WARNING";
+
+    // Extremely large = likely malicious / malformed
+    return "CRITICAL";
+}
+
+    function openProtocolTab(type){
+        showPacketAnalysis(); // ensure correct section
+
+        activeProtocol = type;
+
+        const protoView = document.getElementById("protocolView");
+        protoView.style.display = "flex";
+
+        document.getElementById("protoTitle").innerText = type + " Packets";
+
+        const tbody = document.getElementById("protocolTable");
+        tbody.innerHTML = "";
+
+        latestPackets
+            .filter(pkt => {
+                const protocol = pkt.protocol || "OTHER";
+                if (protocol === type) return true;
+                if (protocol === "OTHER" && getOtherType(pkt) === type) return true;
+                return false;
+            })
+            .slice(-200)
+            .reverse()
+            .forEach(pkt => {
+                tbody.insertAdjacentHTML("beforeend", `
+                <tr>
+                    <td>${pkt.time}</td>
+                    <td>${pkt.src || "-"}</td>
+                    <td>${pkt.dst || "-"}</td>
+                    <td>${type}</td>
+                    <td>${pkt.size || 0} B</td>
+                </tr>
+            `);
+            });
+    }
+
+    function closeProtocolTab(){
+        document.getElementById("protocolView").style.display="none";
+    }
+
+    // =====================
+    // RESTORE STATE WHEN RETURNING TO DASHBOARD (e.g. from Home / Global Map)
+    // =====================
+    const API_STATUS = "http://localhost:8080/api/status";
+    async function restoreCaptureState(){
+
+    // =============================
+    // 1️⃣ RESTORE SAVED UI DATA
+    // =============================
+
+    const savedPackets = sessionStorage.getItem("latestPackets");
+    if(savedPackets){
+        latestPackets = JSON.parse(savedPackets);
+
+        document.getElementById("totalPackets").innerText = latestPackets.length;
+
+        let tcp=0, udp=0, other=0;
+        latestPackets.forEach(pkt=>{
+            if(pkt.protocol==="TCP") tcp++;
+            else if(pkt.protocol==="UDP") udp++;
+            else other++;
+        });
+
+        document.getElementById("tcpCount").innerText = tcp;
+        document.getElementById("udpCount").innerText = udp;
+        document.getElementById("otherCount").innerText = other;
+
+        protocolChart.data.datasets[0].data = [tcp,udp,other];
+        protocolChart.update();
+
+        protocolBarChart.data.datasets[0].data = [tcp,udp,other];
+        protocolBarChart.update();
+    }
+
+    const savedTraffic = sessionStorage.getItem("trafficData");
+    if(savedTraffic){
+        trafficChart.data = JSON.parse(savedTraffic);
+        trafficChart.update();
+    }
+
+    lastPacketCount = parseInt(sessionStorage.getItem("lastPacketCount")) || 0;
+
+    // =============================
+    // 2️⃣ RESTORE CAPTURE STATE
+    // =============================
+
+    const wasActive = sessionStorage.getItem("captureActive") === "1";
+    if(!wasActive) return;
+
+    try{
+        const res = await fetch(API_STATUS);
+        const data = await res.json();
+
+        if(!data.running) return;
+
+        isCapturing = true;
+
+        document.getElementById("btnStart").style.display="none";
+        document.getElementById("btnStop").style.display="inline-block";
+
+        startPolling();
+
+    }catch(e){
+        console.error("Restore state failed", e);
+    }
+}
+    // Run on load so returning to Dashboard restores packet count and capture state
+    restoreCaptureState();
+
+    // =====================
+    // FETCH ALERTS
+    // =====================
+    async function fetchAlerts(){
+
+        if(!isCapturing) return;
+
+        try{
+
+            const res=await fetch(API_ALERTS);
+            const alerts=await res.json();
+            const newAlertCount = alerts.length;
+
+if(newAlertCount > lastAlertCount){
+    document.getElementById("alertSound").play();
+}
+
+lastAlertCount = newAlertCount;
+            const alertsBox=document.getElementById("alerts");
+            const status=document.getElementById("sysStatus");
+
+            if(!alerts || alerts.length===0){
+    status.className="status-badge status-safe";
+    status.innerText="● SAFE";
+
+    alertsBox.innerHTML = `
+        <div style="text-align:center; padding:20px; color:var(--text-dim); font-size:12px;">
+            No active threats.
+        </div>`;
+
+    lastAlertCount = 0; // reset counter when no alerts
+
+    return;
+}
+
+            status.className="status-badge status-danger";
+            status.innerText="● WARNINGS";
+
+            alertsBox.innerHTML="";
+
+            alerts.slice(-20).reverse().forEach(a=>{
+
+    const div=document.createElement("div");
+
+    div.className="alert-item " +
+        (a.type === "CRITICAL" ? "alert-critical" : "alert-warning");
+
+    div.innerHTML=`
+        <strong>${a.type}</strong><br>
+        ${a.message}<br>
+        <small>${a.src} → ${a.dst} | ${a.size} B</small>
+    `;
+
+    
+
+    // 🔎 Click to show details
+    div.onclick = () => showAlertDetails(a);
+
+    alertsBox.appendChild(div);
+});
+
+        }catch(e){
+            console.error(e);
+        }
+    }
+    document.addEventListener("visibilitychange", () => {
+        if (document.hidden) {
+            // Pause rendering but DO NOT stop backend
+            stopPolling();
+        } else {
+            // Resume when tab becomes active again
+            if (isCapturing) {
+                startPolling();
+                fetchPackets();
+                fetchAlerts();
+            }
+        }
+    });
+    window.addEventListener("beforeunload", () => {
+        sessionStorage.setItem("captureActive", isCapturing ? "1" : "0");
+    });
+    function showDashboard(){
+        document.getElementById("dashboardView").style.display = "block";
+        document.getElementById("packetAnalysisView").style.display = "none";
+        document.getElementById("protocolView").style.display = "none";
+    }
+
+    function showPacketAnalysis(){
+        document.getElementById("dashboardView").style.display = "none";
+        document.getElementById("packetAnalysisView").style.display = "block";
+    }
+    document.addEventListener("DOMContentLoaded", () => {
+
+    const params = new URLSearchParams(window.location.search);
+    const view = params.get("view");
+
+    // Remove active class from all sidebar items
+    document.querySelectorAll(".nav-item").forEach(item=>{
+        item.classList.remove("active");
+    });
+
+    if(view === "packet"){
+
+        showPacketAnalysis();
+
+        const packetNav = document.querySelector(
+            '.nav-item[onclick*="showPacketAnalysis"]'
+        );
+        if(packetNav) packetNav.classList.add("active");
+
+    } else {
+
+        showDashboard();
+
+        const dashboardNav = document.querySelector(
+            '.nav-item[onclick*="showDashboard"]'
+        );
+        if(dashboardNav) dashboardNav.classList.add("active");
+    }
+
+});
+    function setActive(el){
+        document.querySelectorAll(".nav-item").forEach(item=>{
+            item.classList.remove("active");
+        });
+        el.classList.add("active");
+    }
+    function generateLocalAlert(message){
+    const alertsBox = document.getElementById("alerts");
+    const status = document.getElementById("sysStatus");
+
+    status.className="status-badge status-danger";
+    status.innerText="● WARNINGS";
+
+    const div=document.createElement("div");
+    div.className="alert-item";
+    div.innerText="🚨 " + message;
+
+    alertsBox.prepend(div);
+
+    // limit to 20 alerts
+    if(alertsBox.children.length > 20){
+        alertsBox.removeChild(alertsBox.lastChild);
+    }
+}
+function showAlertDetails(alertObj){
+
+    alert(`
+ALERT DETAILS
+
+Time: ${alertObj.time}
+Source: ${alertObj.src}
+Destination: ${alertObj.dst}
+Protocol: ${alertObj.protocol}
+Size: ${alertObj.size} Bytes
+Type: ${alertObj.type}
+
+Message:
+${alertObj.message}
+    `);
+}
+    async function resetCapture(){
+
+    try{
+        await fetch(API_RESET);
+    }catch(e){
+        console.error("Reset failed", e);
+    }
+
+    // Clear frontend memory
+    latestPackets = [];
+    lastPacketCount = 0;
+    lastTime = Date.now();
+
+    // Clear counters
+    document.getElementById("totalPackets").innerText = 0;
+    document.getElementById("tcpCount").innerText = 0;
+    document.getElementById("udpCount").innerText = 0;
+    document.getElementById("otherCount").innerText = 0;
+
+    // Clear charts
+    trafficChart.data.labels = [];
+    trafficChart.data.datasets[0].data = [];
+    trafficChart.update();
+
+    protocolChart.data.datasets[0].data = [0,0,0];
+    protocolChart.update();
+
+    protocolBarChart.data.datasets[0].data = [0,0,0];
+    protocolBarChart.update();
+
+    // Clear alerts UI
+    document.getElementById("alerts").innerHTML =
+        `<div style="text-align:center; padding:20px; color:var(--text-dim); font-size:12px;">
+            Waiting for traffic...
+        </div>`;
+
+    // 🔥 IMPORTANT: Do NOT clear everything
+    sessionStorage.removeItem("latestPackets");
+    sessionStorage.removeItem("lastPacketCount");
+    sessionStorage.removeItem("trafficData");
+    sessionStorage.removeItem("protocolPie");
+    sessionStorage.removeItem("protocolBar");
+}
+</script>
+</body>
+</html>

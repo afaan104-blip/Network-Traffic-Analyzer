@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>NetPulse | Secure Access</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root{
+            --bg:#060504;
+            --panel:#0e0c0a;
+            --gold:#d4af37;
+            --green:#3fa34d;
+            --cyan:#22d3ee;
+            --text:#f5efe6;
+            --dim:#bfb7ad;
+        }
+
+        *{box-sizing:border-box}
+        html,body{
+            margin:0;
+            height:100%;
+            font-family:Inter,sans-serif;
+            background:var(--bg);
+            color:var(--text);
+            overflow:hidden;
+        }
+
+        /* ===== BACKGROUND CANVAS ===== */
+        #neural{
+            position:fixed;
+            inset:0;
+            z-index:0;
+        }
+
+        /* ===== MAIN LAYOUT ===== */
+        .wrapper{
+            position:relative;
+            z-index:2;
+            height:100%;
+            display:grid;
+            grid-template-columns:1.2fr 6px 0.8fr;
+        }
+
+        /* ===== LEFT TEXT ===== */
+        .brand{
+            padding:90px;
+            display:flex;
+            flex-direction:column;
+            justify-content:center;
+        }
+
+        .brand h1{
+            font-size:52px;
+            color:var(--gold);
+            margin:0;
+        }
+
+        .brand p{
+            margin-top:18px;
+            max-width:480px;
+            line-height:1.7;
+            color:var(--dim);
+            font-size:15px;
+        }
+
+        /* ===== DIVIDER LINE ===== */
+        .divider{
+            background:linear-gradient(
+                    to bottom,
+                    transparent,
+                    rgba(212,175,55,.9),
+                    transparent
+            );
+            box-shadow:
+                    0 0 30px rgba(212,175,55,.8),
+                    0 0 80px rgba(212,175,55,.3);
+        }
+
+        /* ===== LOGIN ZONE ===== */
+        /* ===== RIGHT PANEL BACKGROUND ===== */
+        .login-zone{
+            background:
+                    radial-gradient(
+                            120% 120% at 0% 50%,
+                            rgba(212,175,55,.08),
+                            transparent 60%
+                    ),
+                    linear-gradient(
+                            180deg,
+                            var(--panel),
+                            #070605
+                    );
+            display:flex;
+            justify-content:center;
+            align-items:center;
+        }
+
+        /* RECTANGULAR LOGIN BOX */
+        .login-box{
+            width:380px;
+            height:520px;
+            padding:54px 46px;
+            background:linear-gradient(
+                    180deg,
+                    rgba(255,255,255,.06),
+                    rgba(255,255,255,.015)
+            );
+            backdrop-filter:blur(22px);
+            border-radius:22px;
+            border:1px solid rgba(212,175,55,.4);
+            box-shadow:
+                    0 35px 100px rgba(0,0,0,.75),
+                    inset 0 0 28px rgba(212,175,55,.15);
+            display:flex;
+            flex-direction:column;
+            justify-content:center;
+            animation:float 7s ease-in-out infinite;
+        }
+
+        /* FLOATING EFFECT */
+        @keyframes float{
+            0%,100%{transform:translateY(0)}
+            50%{transform:translateY(-12px)}
+        }
+
+        .login-box h2{
+            text-align:center;
+            margin-bottom:38px;
+        }
+        /* ===== INPUTS ===== */
+        .form-row{
+            display:flex;
+            flex-direction:column;
+            gap:22px;
+        }
+
+        .field{
+            position:relative;
+        }
+
+        .field input{
+            width:100%;
+            padding:16px 16px;
+            background:
+                    linear-gradient(
+                            180deg,
+                            rgba(0,0,0,.75),
+                            rgba(0,0,0,.55)
+                    );
+            border-radius:14px;
+            border:1px solid rgba(212,175,55,.25);
+            color:var(--text);
+            font-size:15px;
+            transition:.25s;
+        }
+
+        .field label{
+            background:var(--panel);
+            color:var(--dim);
+            font-size:13px;
+        }
+        .field input:focus+label,
+        .field input:not(:placeholder-shown)+label{
+            top:-8px;
+            font-size:11px;
+            color:var(--cyan);
+        }
+
+        .field input:focus{
+            border-color:var(--cyan);
+            box-shadow:
+                    0 0 0 2px rgba(34,211,238,.35),
+                    inset 0 0 12px rgba(34,211,238,.2);
+        }
+
+        /* ===== BUTTON ===== */
+        button{
+            width:100%;
+            margin-top:34px;
+            padding:16px;
+            border:none;
+            border-radius:16px;
+            font-weight:700;
+            background:
+                    linear-gradient(
+                            135deg,
+                            var(--gold),
+                            #9f7d1f
+                    );
+            color:#000;
+            letter-spacing:.6px;
+            font-size:15px;
+            cursor:pointer;
+            transition:.25s;
+        }
+
+        button:hover{
+            box-shadow:0 20px 50px rgba(212,175,55,.6);
+            transform:translateY(-1px);
+        }
+
+        button:hover{
+            transform:translateY(-2px) scale(1.02);
+            box-shadow:0 18px 45px rgba(63,163,77,.6);
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media(max-width:1000px){
+            .wrapper{grid-template-columns:1fr}
+            .brand,.divider{display:none}
+            .login-box{width:90%}
+        }
+    </style>
+</head>
+
+<body>
+
+<canvas id="neural"></canvas>
+
+<div class="wrapper">
+
+    <!-- LEFT TEXT -->
+    <div class="brand">
+        <h1>NetPulse</h1>
+        <p>
+            Advanced network intelligence platform that visualizes live traffic,
+            detects anomalies and protects digital infrastructure in real time.
+        </p>
+    </div>
+
+    <!-- SEPARATOR -->
+    <div class="divider"></div>
+
+    <!-- LOGIN -->
+    <div class="login-zone">
+        <div class="login-box">
+            <h2>Login</h2>
+
+            <form onsubmit="login(event)">
+                <div class="form-row">
+                    <div class="field">
+                        <input id="user" placeholder=" " required>
+                        <label>Username</label>
+                    </div>
+
+                    <div class="field">
+                        <input id="pass" type="password" placeholder=" " required>
+                        <label>Password</label>
+                    </div>
+                </div>
+
+                <button type="submit">Authenticate</button>
+            </form>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    /* ===== LOGIN ===== */
+
+    function login(e){
+        e.preventDefault(); // stops reload
+
+        const userInput = document.getElementById("user").value;
+        const passInput = document.getElementById("pass").value;
+
+        if(userInput === "admin" && passInput === "admin"){
+            window.location.href = "welcome.html";
+        } else {
+            alert("Access Denied");
+        }
+    }
+
+
+    /* ===== NEURAL NETWORK BACKGROUND ===== */
+    const canvas=document.getElementById("neural");
+    const ctx=canvas.getContext("2d");
+    let w,h,nodes=[];
+
+    function resize(){
+        w=canvas.width=window.innerWidth;
+        h=canvas.height=window.innerHeight;
+    }
+    window.onresize=resize;
+    resize();
+
+    for(let i=0;i<90;i++){
+        nodes.push({
+            x:Math.random()*w,
+            y:Math.random()*h,
+            vx:(Math.random()-.5)*.5,
+            vy:(Math.random()-.5)*.5
+        });
+    }
+
+    function animate(){
+        ctx.clearRect(0,0,w,h);
+
+        for(let i=0;i<nodes.length;i++){
+            const a=nodes[i];
+            a.x+=a.vx;a.y+=a.vy;
+            if(a.x<0||a.x>w)a.vx*=-1;
+            if(a.y<0||a.y>h)a.vy*=-1;
+
+            ctx.fillStyle="#22d3ee";
+            ctx.beginPath();
+            ctx.arc(a.x,a.y,2,0,Math.PI*2);
+            ctx.fill();
+
+            for(let j=i+1;j<nodes.length;j++){
+                const b=nodes[j];
+                const d=Math.hypot(a.x-b.x,a.y-b.y);
+                if(d<160){
+                    ctx.strokeStyle=`rgba(212,175,55,${1-d/160})`;
+                    ctx.beginPath();
+                    ctx.moveTo(a.x,a.y);
+                    ctx.lineTo(b.x,b.y);
+                    ctx.stroke();
+                }
+            }
+        }
+        requestAnimationFrame(animate);
+    }
+    animate();
+</script>
+
+</body>
+</html>
